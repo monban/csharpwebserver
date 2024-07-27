@@ -85,11 +85,16 @@ namespace HTTP
         public byte[] GetBytes()
         {
             var s = new StringBuilder();
-            s.Append($"HTTP/1.1 {responseCode}\r\n");
-            s.Append("Content-Type: text/plain; charset=UTF-8\r\n");
-            s.Append($"Content-Length: {body.Length}\r\n");
-            s.Append($"\r\n");
-            s.Append(body);
+            Action<string> addline = (line) =>
+            {
+                s.Append(line);
+                s.Append("\r\n");
+            };
+            addline($"HTTP/1.1 {responseCode}");
+            addline("Content-Type: text/plain; charset=UTF-8");
+            addline($"Content-Length: {body.Length}");
+            addline("");
+            addline(body);
             return Encoding.UTF8.GetBytes(s.ToString());
         }
 
