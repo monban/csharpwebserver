@@ -33,21 +33,12 @@ class MyTcpListener
         // Wait for the client to finish sending its
         // request (we don't care what it is)
         var stream = client.GetStream();
-        int lfs = 0;
-        while (lfs < 4)
-        {
-            var b = stream.ReadByte();
-            if (b == 10 || b == 13)
-            {
-                lfs++;
-            }
-            else
-            {
-                lfs = 0;
-            }
-        }
-        Thread.Sleep(10);
-        byte[] rBody = Encoding.UTF8.GetBytes("HTTP/1.1 200 OK\nContent-Type: text/plain; charset=UTF-8\n\nHello, world.\n");
+        byte[] buf = new byte[128];
+        int n = stream.Read(buf);
+        var req = Encoding.UTF8.GetString(buf);
+
+        var res = new HTTP.Response("Hello, world");
+        byte[] rBody = res.GetBytes();
         stream.Write(rBody, 0, rBody.Length);
 
         // Do I need to dispose the client, or does it happen
@@ -56,3 +47,51 @@ class MyTcpListener
     }
 }
 
+namespace HTTP
+{
+    class Request
+    {
+        Request()
+        {
+            uri = "";
+            headers = new Dictionary<string, string> { };
+        }
+        Method method;
+        string uri;
+        Dictionary<string, string> headers;
+    }
+
+    class Response
+    {
+        public Response(string body)
+        {
+            this.responseCode = 200;
+            headers = new Dictionary<string, string> { };
+            this.body = body;
+        }
+
+        public byte[] GetBytes()
+        {
+            var s = new StringBuilder();
+            s.Append($"HTTP/1.1 {responseCode}\r\n");
+            s.Append("Content-Type: text/plain; charset=UTF-8\r\n");
+            s.Append($"Content-Length: {body.Length}\r\n");
+            s.Append($"\r\n");
+            s.Append(body);
+            return Encoding.UTF8.GetBytes(s.ToString());
+        }
+
+        int responseCode;
+        Dictionary<string, string> headers;
+        string body;
+    }
+
+    enum Method
+    {
+        GET,
+        POST,
+        PUT,
+        PATCH,
+        DELETE,
+    }
+}
