@@ -19,12 +19,27 @@ class MyTcpListener
             while (true)
             {
                 using TcpClient client = server.AcceptTcpClient();
-                Console.WriteLine("Connected!");
 
-                NetworkStream stream = client.GetStream();
-
-                var rBody = Encoding.UTF8.GetBytes("HTTP/1.1 200 OK\nContent-Type: text/plain; charset=UTF-8\n\nHello, world.\n");
-                stream.Write(rBody, 0, rBody.Length);
+                using (NetworkStream stream = client.GetStream())
+                {
+                    // Wait for the client to finish sending its
+                    // request (we don't care what it is)
+                    int lfs = 0;
+                    while (lfs < 4)
+                    {
+                        var b = stream.ReadByte();
+                        if (b == 10 || b == 13)
+                        {
+                            lfs++;
+                        }
+                        else
+                        {
+                            lfs = 0;
+                        }
+                    }
+                    var rBody = Encoding.UTF8.GetBytes("HTTP/1.1 200 OK\nContent-Type: text/plain; charset=UTF-8\n\nHello, world.\n");
+                    stream.Write(rBody, 0, rBody.Length);
+                }
             }
         }
         catch (SocketException e)
