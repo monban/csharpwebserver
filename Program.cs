@@ -2,53 +2,65 @@
 using System.Net.Sockets;
 using System.Text;
 
-class MyTcpListener
+class Program
 {
     public static void Main()
     {
-        // Set the TcpListener on port 13000.
-        Int32 port = 13000;
         IPAddress localAddr = IPAddress.Parse("127.0.0.1");
-        var server = new TcpListener(localAddr, port);
-
-        try
-        {
-            server.Start();
-            Console.WriteLine($"Listening on {localAddr}:{port}");
-
-            while (true)
-            {
-                TcpClient client = server.AcceptTcpClient();
-                Task.Run(() => ServeHTTP(client));
-            }
-        }
-        catch (SocketException e)
-        {
-            Console.WriteLine("SocketException: {0}", e);
-        }
-    }
-
-    public static void ServeHTTP(TcpClient client)
-    {
-        // Wait for the client to finish sending its
-        // request (we don't care what it is)
-        var stream = client.GetStream();
-        byte[] buf = new byte[128];
-        int n = stream.Read(buf);
-        var req = Encoding.UTF8.GetString(buf);
-
-        var res = new HTTP.Response("Hello, world");
-        byte[] rBody = res.GetBytes();
-        stream.Write(rBody, 0, rBody.Length);
-
-        // Do I need to dispose the client, or does it happen
-        // automatically when it goes out scope?
-        client.Dispose();
+        var endpoint = new IPEndPoint(localAddr, 13000);
+        var s = new HTTP.Server(endpoint);
+        s.Start();
     }
 }
 
 namespace HTTP
 {
+    class Server
+    {
+        public Server(IPEndPoint endpoint)
+        {
+            listener = new TcpListener(endpoint.Address, endpoint.Port);
+        }
+
+        public void Start()
+        {
+            try
+            {
+                listener.Start();
+                Console.WriteLine($"Listening on {listener.LocalEndpoint}");
+
+                while (true)
+                {
+                    TcpClient client = listener.AcceptTcpClient();
+                    Task.Run(() => ServeHTTP(client));
+                }
+            }
+            catch (SocketException e)
+            {
+                Console.WriteLine("SocketException: {0}", e);
+            }
+        }
+
+        public static void ServeHTTP(TcpClient client)
+        {
+            // Wait for the client to finish sending its
+            // request (we don't care what it is)
+            var stream = client.GetStream();
+            byte[] buf = new byte[128];
+            int n = stream.Read(buf);
+            var req = Encoding.UTF8.GetString(buf);
+
+            var res = new HTTP.Response("Hello, world");
+            byte[] rBody = res.GetBytes();
+            stream.Write(rBody, 0, rBody.Length);
+
+            // Do I need to dispose the client, or does it happen
+            // automatically when it goes out scope?
+            client.Dispose();
+        }
+        TcpListener listener;
+    }
+
     class Request
     {
         Request()
