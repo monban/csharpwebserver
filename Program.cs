@@ -63,14 +63,52 @@ namespace HTTP
 
     class Request
     {
-        Request()
+        public Request()
         {
             uri = "";
             headers = new Dictionary<string, string> { };
         }
-        Method method;
-        string uri;
-        Dictionary<string, string> headers;
+        public Method method;
+        public string uri;
+        public Dictionary<string, string> headers;
+    }
+
+    class RequestBuilder
+    {
+        public void Write(byte[] foo)
+        {
+            foreach (byte b in foo)
+            {
+                this.Write(b);
+            }
+        }
+
+        public void Write(byte b)
+        {
+            switch (state)
+            {
+                case State.method:
+                    if (b == ' ')
+                    {
+                        state = State.uri;
+                    }
+                    else
+                    {
+                        request.method += b;
+                    }
+                    break;
+
+            }
+        }
+
+        Request request = new Request();
+        public bool isComplete;
+        State state = State.method;
+        enum State
+        {
+            method,
+            uri,
+        }
     }
 
     class Response
