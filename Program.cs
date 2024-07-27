@@ -18,41 +18,41 @@ class MyTcpListener
 
             while (true)
             {
-                using TcpClient client = server.AcceptTcpClient();
-
-                using (NetworkStream stream = client.GetStream())
-                {
-                    // Wait for the client to finish sending its
-                    // request (we don't care what it is)
-                    int lfs = 0;
-                    while (lfs < 4)
-                    {
-                        var b = stream.ReadByte();
-                        if (b == 10 || b == 13)
-                        {
-                            lfs++;
-                        }
-                        else
-                        {
-                            lfs = 0;
-                        }
-                    }
-                    var rBody = Encoding.UTF8.GetBytes("HTTP/1.1 200 OK\nContent-Type: text/plain; charset=UTF-8\n\nHello, world.\n");
-                    stream.Write(rBody, 0, rBody.Length);
-                }
+                TcpClient client = server.AcceptTcpClient();
+                Task.Run(() => ServeHTTP(client));
             }
         }
         catch (SocketException e)
         {
             Console.WriteLine("SocketException: {0}", e);
         }
-        finally
-        {
-            server.Stop();
-        }
+    }
 
-        Console.WriteLine("\nHit enter to continue...");
-        Console.Read();
+    public static void ServeHTTP(TcpClient client)
+    {
+        // Wait for the client to finish sending its
+        // request (we don't care what it is)
+        var stream = client.GetStream();
+        int lfs = 0;
+        while (lfs < 4)
+        {
+            var b = stream.ReadByte();
+            if (b == 10 || b == 13)
+            {
+                lfs++;
+            }
+            else
+            {
+                lfs = 0;
+            }
+        }
+        Thread.Sleep(10);
+        byte[] rBody = Encoding.UTF8.GetBytes("HTTP/1.1 200 OK\nContent-Type: text/plain; charset=UTF-8\n\nHello, world.\n");
+        stream.Write(rBody, 0, rBody.Length);
+
+        // Do I need to dispose the client, or does it happen
+        // automatically when it goes out scope?
+        client.Dispose();
     }
 }
 
