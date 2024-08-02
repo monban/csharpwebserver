@@ -7,8 +7,8 @@ class Program
     public static void Main()
     {
         IPAddress localAddr = IPAddress.Parse("127.0.0.1");
-        var endpoint = new IPEndPoint(localAddr, 13000);
-        var s = new HTTP.Server(endpoint);
+        IPEndPoint endpoint = new(localAddr, 13000);
+        HTTP.Server s = new(endpoint);
         try
         {
             s.Start();
@@ -26,7 +26,7 @@ namespace HTTP
     {
         public Server(IPEndPoint endpoint)
         {
-            listener = new TcpListener(endpoint.Address, endpoint.Port);
+            listener = new(endpoint.Address, endpoint.Port);
         }
 
         public void Start()
@@ -55,13 +55,13 @@ namespace HTTP
             {
                 // Wait for the client to finish sending its
                 // request (we don't care what it is)
-                var stream = client.GetStream();
-                Request req = new Request(stream);
+                using Stream stream = client.GetStream();
+                Request req = new(stream);
+                Console.WriteLine("REQUEST:");
                 Console.WriteLine(req);
 
-                var res = new HTTP.Response("Hello, world");
-                byte[] rBody = res.GetBytes();
-                stream.Write(rBody, 0, rBody.Length);
+                HTTP.Response res = new("Hello, world");
+                res.WriteResponse(stream);
             }
             catch (Exception e)
             {
@@ -87,8 +87,7 @@ namespace HTTP
 
         public Request(Stream s)
         {
-            var reader = new StreamReader(s);
-
+            using StreamReader reader = new(s, Encoding.ASCII, false, 1024, true);
             string? firstLine = reader.ReadLine();
             if (firstLine is not string)
             {
@@ -122,7 +121,7 @@ namespace HTTP
 
         public override string ToString()
         {
-            StringBuilder s = new StringBuilder();
+            StringBuilder s = new();
             s.AppendLine($"{method} {uri}");
             foreach (var header in headers)
             {
@@ -144,7 +143,7 @@ namespace HTTP
             this.body = body;
         }
 
-        public byte[] GetBytes()
+        public override string ToString()
         {
             var s = new StringBuilder();
             // Use our own AppendLine to make sure we get CRLF
@@ -155,10 +154,19 @@ namespace HTTP
             };
             AppendLine($"HTTP/1.1 {responseCode}");
             AppendLine("Content-Type: text/plain; charset=UTF-8");
-            AppendLine($"Content-Length: {body.Length}");
+
+            // Add 2 to body.Length to account for the CRLF
+            AppendLine($"Content-Length: {body.Length + 2}");
             AppendLine("");
             AppendLine(body);
-            return Encoding.ASCII.GetBytes(s.ToString());
+            return s.ToString();
+        }
+
+        public void WriteResponse(Stream stream)
+        {
+            string str = ToString();
+            using StreamWriter sw = new(stream, Encoding.ASCII, str.Length, true);
+            sw.Write(str);
         }
 
         int responseCode;
