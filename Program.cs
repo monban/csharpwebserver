@@ -39,7 +39,7 @@ namespace HTTP
                 while (true)
                 {
                     TcpClient client = listener.AcceptTcpClient();
-                    Task.Run(() => ServeHTTP(client));
+                    Task.Run(() => ServeHTTP(client.GetStream()));
                 }
             }
             catch
@@ -49,29 +49,22 @@ namespace HTTP
             }
         }
 
-        public static void ServeHTTP(TcpClient client)
+        public static void ServeHTTP(Stream clientStream)
         {
             try
             {
                 // Wait for the client to finish sending its
                 // request (we don't care what it is)
-                using Stream stream = client.GetStream();
-                Request req = new(stream);
+                Request req = new(clientStream);
                 Console.WriteLine("REQUEST:");
                 Console.WriteLine(req);
 
                 HTTP.Response res = new("Hello, world");
-                res.WriteResponse(stream);
+                res.WriteResponse(clientStream);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
-            }
-            finally
-            {
-                // Do I need to dispose the client, or does it happen
-                // automatically when it goes out scope?
-                client.Dispose();
             }
         }
         TcpListener listener;
