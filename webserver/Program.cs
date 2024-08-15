@@ -20,8 +20,7 @@ namespace HTTP
 
                 while (true)
                 {
-                    TcpClient client = listener.AcceptTcpClient();
-                    Task.Run(() => ServeHTTP(client.GetStream()));
+                    Task.Run(() => acceptClient(listener.AcceptTcpClient()));
                 }
             }
             catch
@@ -31,18 +30,26 @@ namespace HTTP
             }
         }
 
-        public static void ServeHTTP(Stream clientStream)
+        private void acceptClient(TcpClient c)
+        {
+            using Stream s = c.GetStream();
+            StreamReader r = new(s, Encoding.ASCII, false, 1024, true);
+            StreamWriter w = new(s);
+            ServeHTTP(w, r);
+        }
+
+        public void ServeHTTP(StreamWriter w, StreamReader r)
         {
             try
             {
                 // Wait for the client to finish sending its
                 // request (we don't care what it is)
-                Request req = new(clientStream);
+                Request req = new(r);
                 Console.WriteLine("REQUEST:");
                 Console.WriteLine(req);
 
                 HTTP.Response res = new("Hello, world");
-                res.WriteResponse(clientStream);
+                res.WriteResponse(w);
             }
             catch (Exception e)
             {
@@ -60,10 +67,9 @@ namespace HTTP
             headers = new Dictionary<string, string> { };
         }
 
-        public Request(Stream s)
+        public Request(StreamReader r)
         {
-            using StreamReader reader = new(s, Encoding.ASCII, false, 1024, true);
-            string? firstLine = reader.ReadLine();
+            string? firstLine = r.ReadLine();
             if (firstLine is not string)
             {
                 throw new Exception("unable to read from socket");
@@ -82,7 +88,7 @@ namespace HTTP
             uri = fields[1];
 
             headers = new Dictionary<string, string> { };
-            string? line = reader.ReadLine();
+            string? line = r.ReadLine();
             while (line is string && line.Length > 0)
             {
                 string[] l = line.Split(": ");
@@ -90,7 +96,7 @@ namespace HTTP
                 {
                     headers.Add(l[0], l[1]);
                 }
-                line = reader.ReadLine();
+                line = r.ReadLine();
             }
         }
 
@@ -137,11 +143,10 @@ namespace HTTP
             return s.ToString();
         }
 
-        public void WriteResponse(Stream stream)
+        public void WriteResponse(StreamWriter w)
         {
             string str = ToString();
-            using StreamWriter sw = new(stream, Encoding.ASCII, str.Length, true);
-            sw.Write(str);
+            w.Write(str);
         }
 
         int responseCode;
